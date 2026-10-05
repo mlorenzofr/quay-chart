@@ -1,5 +1,5 @@
 {{/*
-Validate quayConfig.users, organizations, and repositories.
+Validate quayConfig.users, organizations, repositories, and robots.
 Renders nothing. Fails the release on invalid input.
 */}}
 {{- define "quay.config.validate" -}}
@@ -36,6 +36,33 @@ Renders nothing. Fails the release on invalid input.
 {{- range .Values.quayConfig.repositories }}
 {{- if not (contains "/" .name) }}
 {{- fail (printf "repository name %q must be namespace/name" .name) }}
+{{- end }}
+{{- end }}
+{{- range (.Values.quayConfig.robots | default list) }}
+{{- if not .name }}
+{{- fail "each quayConfig.robots entry needs a name" }}
+{{- end }}
+{{- $short := .name }}
+{{- if contains "+" .name }}
+{{- $parts := splitList "+" .name }}
+{{- if ne (len $parts) 2 }}
+{{- fail (printf "robot name %q must be namespace+shortname" .name) }}
+{{- end }}
+{{- if or (not (index $parts 0)) (not (index $parts 1)) }}
+{{- fail (printf "robot name %q must be namespace+shortname" .name) }}
+{{- end }}
+{{- $short = index $parts 1 }}
+{{- end }}
+{{- if not (regexMatch "^[a-z][a-z0-9_-]+$" $short) }}
+{{- fail (printf "robot short name %q is invalid" $short) }}
+{{- end }}
+{{- $robotName := .name }}
+{{- if .federations }}
+{{- range .federations }}
+{{- if or (not .issuer) (not .subject) }}
+{{- fail (printf "robot %s federations need issuer and subject" $robotName) }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -127,6 +154,27 @@ mounted Secret and are read with a file lookup.
         name: {{ .name | quote }}
         email: {{ .email | quote }}
         state: present
+        quay_host: "{{`{{ quay_host }}`}}"
+        quay_username: "{{`{{ admin_username }}`}}"
+        quay_password: "{{`{{ admin_password }}`}}"
+        validate_certs: "{{`{{ validate_certs | bool }}`}}"
+{{- end }}
+{{- range (.Values.quayConfig.robots | default list) }}
+    - name: Ensure robot {{ .name }} is {{ .state | default "present" }}
+      infra.quay_configuration.quay_robot:
+        name: {{ .name | quote }}
+{{- if .description }}
+        description: {{ .description | quote }}
+{{- end }}
+{{- if .federations }}
+        federations:
+{{- range .federations }}
+          - issuer: {{ .issuer | quote }}
+            subject: {{ .subject | quote }}
+{{- end }}
+        append: {{ .append | default true }}
+{{- end }}
+        state: {{ .state | default "present" | quote }}
         quay_host: "{{`{{ quay_host }}`}}"
         quay_username: "{{`{{ admin_username }}`}}"
         quay_password: "{{`{{ admin_password }}`}}"

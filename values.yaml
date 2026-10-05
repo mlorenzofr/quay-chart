@@ -86,15 +86,18 @@ secretStore:
   kind: ClusterSecretStore
 
 quayConfig:
-  # -- Apply users, organizations, and repositories. Set false to skip
-  # the configuration Job, CronJob, ConfigMap, ExternalSecret, and RBAC.
+  # -- Apply users, organizations, repositories, and robot accounts.
+  # Set false to skip the configuration Job, CronJob, ConfigMap,
+  # ExternalSecret, and RBAC.
   enabled: true
   credentials:
     # -- Vault (or other backend) path extracted into quay-config-credentials.
     key: secret/data/hub/quay-users
   # Exactly one user must set initialize, and that user must be a superuser.
   # Organization names must be at least four characters. Repository names
-  # use the namespace/name form.
+  # use the namespace/name form. Robot names use namespace+shortname.
+  # The short name is lowercase, starts with a letter, and is at least
+  # two characters. Federations require Quay 3.13 or later.
   users:
     - name: quayadmin
       email: quayadmin@example.com
@@ -104,6 +107,8 @@ quayConfig:
       initialize: true
   organizations: []
   repositories: []
+  # -- Robot accounts created with infra.quay_configuration.quay_robot.
+  robots: []
 
 #  users:
 #    - name: quayadmin
@@ -123,6 +128,9 @@ quayConfig:
 #  repositories:
 #    - name: devel/example
 #      visibility: private
+#  robots:
+#    - name: devel+builder
+#      description: CI robot for the devel organization
 
 consoleLink:
   # -- Create an ApplicationMenu ConsoleLink for the Quay route.

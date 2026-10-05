@@ -22,6 +22,12 @@ tests:
         repositories:
           - name: devel/example
             visibility: private
+        robots:
+          - name: devel+builder
+            description: CI robot for the devel organization
+            federations:
+              - issuer: https://issuer.example.com
+                subject: robot-subject
     asserts:
       - matchRegex:
           path: data["requirements.yml"]
@@ -36,11 +42,28 @@ tests:
           path: data["playbook.yml"]
           pattern: "devel/example"
       - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "quay_robot:"
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "devel\\+builder"
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "https://issuer.example.com"
+      - matchRegex:
           path: data["install.sh"]
           pattern: "ansible-galaxy collection install"
       - matchRegex:
           path: data["run.sh"]
           pattern: "ANSIBLE_REMOTE_TMP"
+  - it: rejects a robot short name that starts with a digit
+    set:
+      quayConfig:
+        robots:
+          - name: devel+1bot
+    asserts:
+      - failedTemplate:
+          errorMessage: robot short name "1bot" is invalid
   - it: does not render when quayConfig is disabled
     set:
       quayConfig:
