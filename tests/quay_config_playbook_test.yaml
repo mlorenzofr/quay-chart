@@ -1,0 +1,73 @@
+suite: Ansible configuration playbook
+templates:
+  - templates/quay-config-configmap.yaml
+tests:
+  - it: renders a playbook for the collection
+    set:
+      quayConfig:
+        users:
+          - name: quayadmin
+            email: quayadmin@example.com
+            passwordProperty: quay-admin-password
+            superuser: true
+            initialize: true
+          - name: developer1
+            email: developer1@myorg.com
+            passwordProperty: quay-user-password
+            superuser: false
+            initialize: false
+        organizations:
+          - name: devel
+            email: devel@myorg.com
+        repositories:
+          - name: devel/example
+            visibility: private
+        robots:
+          - name: devel+builder
+            description: CI robot for the devel organization
+            federations:
+              - issuer: https://issuer.example.com
+                subject: robot-subject
+    asserts:
+      - matchRegex:
+          path: data["requirements.yml"]
+          pattern: infra.quay_configuration
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "quay_first_user:"
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "quay_organization:"
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "devel/example"
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "quay_robot:"
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "devel\\+builder"
+      - matchRegex:
+          path: data["playbook.yml"]
+          pattern: "https://issuer.example.com"
+      - matchRegex:
+          path: data["install.sh"]
+          pattern: "ansible-galaxy collection install"
+      - matchRegex:
+          path: data["run.sh"]
+          pattern: "ANSIBLE_REMOTE_TMP"
+  - it: rejects a robot short name that starts with a digit
+    set:
+      quayConfig:
+        robots:
+          - name: devel+1bot
+    asserts:
+      - failedTemplate:
+          errorMessage: robot short name "1bot" is invalid
+  - it: does not render when quayConfig is disabled
+    set:
+      quayConfig:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
