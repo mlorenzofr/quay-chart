@@ -44,6 +44,13 @@ if [[ -z "${bucket_port}" ]]; then
 	bucket_port="443"
 fi
 
+# nginx's async resolver does not apply /etc/resolv.conf search domains, so bare
+# service names like s3.openshift-storage.svc return NXDOMAIN. Ensure the stored
+# hostname is a FQDN so the proxy resolver can resolve it without search expansion.
+if [[ "${bucket_host}" != *.cluster.local ]]; then
+	bucket_host="${bucket_host}.cluster.local"
+fi
+
 if [[ "${bucket_port}" == "443" ]]; then
 	is_secure="true"
 else
